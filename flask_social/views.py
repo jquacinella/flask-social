@@ -24,6 +24,10 @@ from .utils import (config_value, get_provider_or_404, get_authorize_callback,
                     get_connection_values_from_oauth_response,
                     get_token_pair_from_oauth_response)
 
+# Used to detect when oauth exceptions happen; this is a dependency
+# listed in the setup.py file, so should be no issue to use it here
+from flask_oauthlib.client import OAuthException
+
 
 # Convenient references
 _security = LocalProxy(lambda: current_app.extensions['security'])
@@ -210,9 +214,12 @@ def login_callback(provider_id):
         _logger.debug('Received login response from '
                       '%s: %s' % (provider.name, response))
 
-        # Adding getattr call since respone is sometimes flask_oauthlib.client.OAuthException
-        # when google or any oauth provider sends back a bad / error response
-        if response is None or getattr(response, "type", False):
+        # On any oauth exception, raise it to the flask app
+        if type(response) == OAuthException:
+            raise response
+
+        # If no response, then unauthorized
+        if response is None:
             do_flash('Access was denied to your %s '
                      'account' % provider.name, 'error')
             return _security.login_manager.unauthorized(), None
