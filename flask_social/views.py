@@ -210,7 +210,9 @@ def login_callback(provider_id):
         _logger.debug('Received login response from '
                       '%s: %s' % (provider.name, response))
 
-        if response is None:
+        # Adding getattr call since respone is sometimes flask_oauthlib.client.OAuthException
+        # when google or any oauth provider sends back a bad / error response
+        if response is None or getattr(response, "type", False):
             do_flash('Access was denied to your %s '
                      'account' % provider.name, 'error')
             return _security.login_manager.unauthorized(), None
